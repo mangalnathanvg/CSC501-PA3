@@ -1,0 +1,93 @@
+Name: Mangalnathan Vijayagopal
+Unity ID: mvijaya2
+
+
+Additional Tasks for PA3
+
+(1) 
+
+The priority inversion problem could cause that a higher-priority process needs to wait for the completion of a lower-priority process.
+Solution:
+1. Another approach that addresses priority inversion is Random Boosting
+
+Random Boosting is a strategy used by the scheduler of Microsoft Windows to avoid deadlock caused by priority inversion.
+Here the ready processes are randomly boosted in priority and are allowed to run long enough to exit the critical section.
+If a process does not get enough time to release the lock, it will definitely get another chance to do so.
+
+Reference: https://en.wikipedia.org/wiki/Random_boosting
+
+
+
+Solution:
+2. Result of task1.c testcase is given below:
+
+Testing semaphores of Original XINU Implementation
+Semaphore Test : test the basic priority inheritence
+-start writer, then sleep 1s. semaphore granted to write (prio 30)
+  writer: to acquire semaphore
+  writer: acquired semaphore, sleep 10s
+-start reader A, then sleep 1s. reader A(prio 40) blocked on the semaphore
+  reader A: to acquire semaphore
+Test for Semaphore failed
+
+Testing locks of PA3 implementation
+Lock Test: test the basic priority inheritence
+-start writer, then sleep 1s. lock granted to write (prio 30)
+  writer: to acquire lock
+  writer: acquired lock, sleep 10s
+-start reader A, then sleep 1s. reader A(prio 40) blocked on the lock
+  reader A: to acquire lock
+-start reader B, then sleep 1s. reader B(prio 50) blocked on the lock
+  reader B: to acquire lock
+-kill reader B, then sleep 1s
+-kill reader A, then sleep 1s
+  writer: to release semaphore
+  reader A: acquired semaphore
+  reader A: to release semaphore
+  writer: to release lock
+Test for Lock OK
+
+The test cases are for two reader processes and a single writer process similar to the one provided in main.c
+
+Here the process priorities are as follows:
+
+1) 2 Readers with priorities 40 and 50
+2) 1 Writer with priority 30
+
+Here, the original XINU implementation does not comprise of priority inheritance mechanisms. Therefore the test for semaphore fails 
+because a high priority process gets blocked because semaphore is held by a low priority process.
+
+Since priority inheritance has been successfully implemented for locks, we see that the test for locks has successfully been completed.
+That means that high priority waiting for locks held by a low priority process does not get blocked.
+
+
+(2)
+Solution:
+It is given that multiple readers can execute this code concurrently by calling do_update. When do_update is called, multiple readers also
+call try_update and consequently try to add to global buffer. If multiple readers try to add to global buffer concurrently, a race condition
+is created with the section where buffer_add is called being the critical section. Since reader locks are not mutually exclusive, multiple readers can acquire 
+the lock and add to the global buffer concurrently. Consequently, This global buffer will have inconsistent data.
+
+A possible interleaving that can trigger this problem is briefly described as follows:
+
+Consider 2 reader processes reader 1 and reader 2.
+Interleaving steps in order are as follows:
+
+                Reader 1                                                                             Reader 2
+1) reader 1 calls do_update and acquires the lock
+2) reader 1 calls try_update()
+3) reader 1 computes current time as string and stores in bufstr
+
+CPU switches to Reader 2 because of scheduling      
+
+                                                                            4) reader 2 calls do_update and acquires the lock
+                                                                            5) reader 2 calls try_update()
+                                                                            6) reader 2 computes current time as string and stores in bufstr
+                                                                            7) reader 2 adds bufstr to global_buf and finishes
+
+                                                                            CPU switches to reader 1 waiting to execute
+                    
+8) reader 1 adds bufstr to global_buf and finishes
+
+Due to this interleaving, data is entered into the global_buf in an unexpected order depending on CPU scheduling. This causes
+the global buffer to hold inconsistent data i.e different possible states depending on the CPU. 
